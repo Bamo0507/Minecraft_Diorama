@@ -1,0 +1,36 @@
+# Archivos de configuración de compilación local
+**/*.rs.bk
+Cargo.lock
+
+# Archivos de metadatos y caché de Rust/Cargo
+.rustc_info.json
+.CACHEDIR.TAG
+
+# Archivos temporales del sistema
+*.swp
+*.swo
+
+# Archivos de entornos de desarrollo
+.idea/
+.vscode/
+
+# Archivos de dependencias en binarios
+*.dll
+*.exe
+*.dylib
+*.so
+*.a
+
+# Archivos de logs
+*.log
+
+*.TAG
+
+/target/debug/
+
+.cargo-lock
+
+# Archivos en target
+/target/
+
+Cargo.lock
