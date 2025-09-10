@@ -48,7 +48,7 @@ impl Skybox {
         };
 
         // u,v en [-1,1] -> [0,1]; usualmente V se invierte según tu Texture::sample
-        let mut s = (u + 1.0) * 0.5;
+        let s = (u + 1.0) * 0.5;
         let mut t = (v + 1.0) * 0.5;
         // Si tu sample usa t=0 arriba, invierte:
         t = 1.0 - t;

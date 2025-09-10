@@ -38,22 +38,4 @@ impl Texture {
         let (w, h) = rot.dimensions();
         Self { width: w, height: h, data: rot.into_raw() }
     }
-
-    pub fn flipped_h(self) -> Self {
-        use image::{imageops, RgbaImage};
-        let img = RgbaImage::from_raw(self.width, self.height, self.data)
-            .expect("Texture buffer inválido");
-        let f = imageops::flip_horizontal(&img);
-        let (w, h) = f.dimensions();
-        Self { width: w, height: h, data: f.into_raw() }
-    }
-
-    pub fn flipped_v(self) -> Self {
-        use image::{imageops, RgbaImage};
-        let img = RgbaImage::from_raw(self.width, self.height, self.data)
-            .expect("Texture buffer inválido");
-        let f = imageops::flip_vertical(&img);
-        let (w, h) = f.dimensions();
-        Self { width: w, height: h, data: f.into_raw() }
-    }
 }

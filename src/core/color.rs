@@ -1,7 +1,7 @@
 use nalgebra_glm as glm;
 
 #[derive(Clone, Copy, Debug)]
-pub struct Color { pub r: u8, pub g: u8, pub b: u8 }
+pub struct Color { pub r: u8, pub g: u8, pub b: u8 } // Manejar rgb
 impl Color {
     pub fn new(r: u8, g: u8, b: u8) -> Self { Self { r, g, b } }
     pub fn to_u32(self) -> u32 {

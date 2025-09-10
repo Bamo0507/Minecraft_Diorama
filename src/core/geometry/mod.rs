@@ -1,5 +1,5 @@
 pub mod sphere;
-pub mod aabb; // <-- agrega esto
+pub mod aabb;
 
 use nalgebra_glm as glm;
 use crate::core::intersect::Intersect;

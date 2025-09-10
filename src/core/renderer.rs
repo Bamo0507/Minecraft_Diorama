@@ -2,9 +2,10 @@ use nalgebra_glm as glm;
 use super::{color::Color, framebuffer::Framebuffer, scene::Scene, ray::Ray, intersect::Intersect};
 use super::geometry::RayIntersect;
 use super::camera::OrbitCamera;
+use rayon::prelude::*;
 
 // Profundidad máxima de rayos secundarios
-const MAX_DEPTH: u32 = 4;
+const MAX_DEPTH: u32 = 3;
 // Pequeño sesgo para evitar acne de auto-intersección
 const RAY_BIAS: f32 = 1e-4;
 
@@ -13,25 +14,57 @@ impl Renderer {
     pub fn new() -> Self { Self {} }
 
     pub fn render_frame(&self, scene: &Scene, fb: &mut Framebuffer, cam: &OrbitCamera) {
-        let width = fb.width as f32;
+        let width  = fb.width as f32;
         let height = fb.height as f32;
         let aspect = width / height;
-
+    
         let cam_origin = cam.eye();
         let (right, up, forward) = cam.basis();
-
-        for y in 0..fb.height {
-            for x in 0..fb.width {
-                // NDC [-1,1]
-                let sx = (2.0 * x as f32) / width - 1.0;
-                let sy = -((2.0 * y as f32) / height - 1.0);
-                let sx = sx * aspect;
-
-                // IMPORTANTE: +forward (la imagen está al frente)
-                let dir_world = glm::normalize(&(sx * right + sy * up + forward));
-                let ray = Ray::new(cam_origin, dir_world);
+    
+        // Precompute NDC for cols/rows 
+        let w = fb.width as usize;
+        let h = fb.height as usize;
+    
+        let mut sxs = Vec::with_capacity(w);
+        for x in 0..w {
+            // NDC x in [-1,1] with aspect
+            let sx = (2.0 * x as f32) / width - 1.0;
+            sxs.push(sx * aspect);
+        }
+        let mut sys = Vec::with_capacity(h);
+        for y in 0..h {
+            // NDC y in [-1,1]
+            let sy = 1.0 - (2.0 * y as f32) / height;
+            sys.push(sy);
+        }
+    
+        // Buffer temporal para resultados por pixel (se llena en paralelo)
+        let mut scratch: Vec<Color> = vec![Color::new(0,0,0); w * h];
+    
+        // Datos inmutables que capturamos en el closure (Send + Sync)
+        let r = right;   // copia por valor (Vec3)
+        let u = up;
+        let f = forward;
+        let cam_o = cam_origin;
+    
+        scratch
+            .par_iter_mut()               // iteración paralela
+            .enumerate()
+            .for_each(|(idx, pix)| {
+                let y = idx / w;
+                let x = idx % w;
+    
+                let dir_world = glm::normalize(&(sxs[x] * r + sys[y] * u + f));
+                let ray = Ray::new(cam_o, dir_world);
                 let color = self.trace(&ray, scene, 0);
-                fb.set_pixel(x, y, color);
+                *pix = color;
+            });
+    
+        // Blit secuencial al framebuffer (barato vs. todo el cómputo anterior)
+        for y in 0..h {
+            let row = &scratch[y * w .. (y + 1) * w];
+            for x in 0..w {
+                fb.set_pixel(x as u32, y as u32, row[x]);
             }
         }
     }
@@ -56,7 +89,7 @@ impl Renderer {
                 closest = hit;
             }
         }
-        // AABBs
+        // AABBs (versión estándar)
         for b in &scene.aabbs {
             let hit = b.ray_intersect(&ray.origin, &ray.dir);
             if hit.is_intersecting && hit.distance < zbuffer {
@@ -110,22 +143,32 @@ impl Renderer {
             }
         }
 
-        // Mezcla de capas
-        // Si hay transparencia, usamos Fresnel físico para repartir entre reflexión/transmisión.
-        // Si no, usamos kr/kt del material como pesos.
-        let (w_refl, w_refr) = if kt > 0.0 {
-            // modula por los parámetros del material para tener control artístico
-            ( (fresnel * kr).clamp(0.0, 1.0),
-              ((1.0 - fresnel) * kt).clamp(0.0, 1.0) )
+        // --- Mezcla de capas (dielectric-friendly) ---
+        let kr = closest.material.reflectivity.clamp(0.0, 1.0);
+        let kt = closest.material.transparency.clamp(0.0, 1.0);
+        let ior = closest.material.ior.max(1e-3);
+
+        // ¿Es dieléctrico transparente? (agua/vidrio)
+        let is_dielectric = kt > 0.5 && ior > 1.001;
+
+        // Piso suave de reflectividad para que el reflejo no desaparezca de frente
+        let refl_floor = 0.20 * kr;
+
+        let (mut w_local, mut w_refl, mut w_refr) = if kt > 0.0 {
+            let w_refl_f = (refl_floor + (1.0 - refl_floor) * fresnel).clamp(0.0, 1.0) * kr;
+            let w_refr_f = (1.0 - w_refl_f) * kt;
+            let w_local_f = if is_dielectric { 0.0 } else { (1.0 - w_refl_f - w_refr_f).max(0.0) };
+            (w_local_f, w_refl_f, w_refr_f)
         } else {
-            (kr, kt)
+            ((1.0 - kr).max(0.0), kr, 0.0)
         };
 
-        let mut w_local = 1.0 - w_refl - w_refr;
-        if w_local < 0.0 { w_local = 0.0; }
+        // Normaliza por seguridad
+        let sum = (w_local + w_refl + w_refr).max(1e-6);
+        w_local /= sum; w_refl /= sum; w_refr /= sum;
 
         // Composición final
-        mix3(local, refl_col, refr_col, w_local, w_refl, w_refr)
+        return mix3(local, refl_col, refr_col, w_local, w_refl, w_refr);
     }
 
     fn shade_local(&self, scene: &Scene, hit: &Intersect, cam_origin: glm::Vec3) -> Color {
@@ -137,32 +180,39 @@ impl Renderer {
         for light in &scene.lights {
             let ldir = glm::normalize(&(light.position - hit.point));
             let n = hit.normal; // ya normalizada
-        
-            // ← NUEVO: visibilidad (0 en sombra, 1 si visible)
+
+            // Visibilidad (0 en sombra, 1 visible)
             let vis = shadow_visibility(scene, hit.point, n, light.position);
-            if vis == 0.0 { continue; } // opcional: salta cálculos si está en sombra
-        
+            if vis == 0.0 { continue; }
+
             // Difuso (Lambert)
-            let diff = glm::dot(&n, &ldir).max(0.0);
-        
-            // Especular (Phong)
-            let r = reflect(-ldir, n);
-            let spec = glm::dot(&r, &view_dir)
-                .max(0.0)
-                .powf(hit.material.shininess.max(1.0));
-        
+            let ndotl = glm::dot(&n, &ldir);
+            if ndotl <= 0.0 {
+                // Si no hay difuso, tampoco hay especular Phong en este modelo
+                continue;
+            }
+            let diff = ndotl;
+
             let light_col = light.color.to_vec3() * light.intensity;
-        
-            // ← APLICA vis
-            result += vis * (albedo.component_mul(&light_col) * diff
-                   + light_col * (hit.material.specular * spec));
+            let mut add = albedo.component_mul(&light_col) * diff;
+
+            // Especular (Phong) sólo si el material lo soporta
+            if hit.material.specular > 0.0 {
+                let r = reflect(-ldir, n);
+                let specdot = glm::dot(&r, &view_dir).max(0.0);
+                if specdot > 0.0 {
+                    let spec = specdot.powf(hit.material.shininess.max(1.0));
+                    add += light_col * (hit.material.specular * spec);
+                }
+            }
+
+            // Aplica visibilidad
+            result += vis * add;
         }
 
         Color::from_vec3(&result)
     }
 }
-
-// ---------------- utilidades físicas ----------------
 
 #[inline]
 fn reflect(i: glm::Vec3, n: glm::Vec3) -> glm::Vec3 {
@@ -206,6 +256,7 @@ fn shadow_visibility(scene: &Scene, p: glm::Vec3, n: glm::Vec3, light_pos: glm::
     if dist <= 0.0 { return 1.0; }
 
     let ldir = to_light / dist;
+
     let origin = offset_origin(p, n, ldir);
     let tmax = dist - RAY_BIAS;
 
@@ -220,6 +271,9 @@ fn shadow_visibility(scene: &Scene, p: glm::Vec3, n: glm::Vec3, light_pos: glm::
             let t = h.material.transparency.clamp(0.0, 1.0);
             if t <= 1e-3 { return 0.0; }     // bloqueador opaco: sombra dura
             vis *= t;                         // semitransparente: atenúa la luz
+            if vis < 0.02 {
+                return 0.0;
+            }
         }
     }
     // AABBs
@@ -229,6 +283,9 @@ fn shadow_visibility(scene: &Scene, p: glm::Vec3, n: glm::Vec3, light_pos: glm::
             let t = h.material.transparency.clamp(0.0, 1.0);
             if t <= 1e-3 { return 0.0; }
             vis *= t;
+            if vis < 0.02 {
+                return 0.0;
+            }
         }
     }
 

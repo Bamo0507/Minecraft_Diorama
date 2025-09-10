@@ -9,6 +9,7 @@ pub enum BlockKind {
     Water,
     Wood,
     Leaves,
+    Iron,
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -1,8 +1,8 @@
 use nalgebra_glm as glm;
 
 pub struct OrbitCamera {
-    pub center: glm::Vec3,
-    pub radius: f32,
+    pub center: glm::Vec3, // pt interes
+    pub radius: f32, // distancia al pt interes
     pub yaw: f32,   // θ (alrededor del eje Y)
     pub pitch: f32, // φ (vertical)
     pub up_world: glm::Vec3,
@@ -32,7 +32,7 @@ impl OrbitCamera {
 
     pub fn rotate(&mut self, dyaw: f32, dpitch: f32) {
         self.yaw = wrap_angle(self.yaw + dyaw);
-        let max_pitch = std::f32::consts::FRAC_PI_2 - 0.01; // ~89°
+        let max_pitch = std::f32::consts::FRAC_PI_2 - 0.01;
         self.pitch = (self.pitch + dpitch).clamp(-max_pitch, max_pitch);
     }
 

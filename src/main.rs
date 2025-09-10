@@ -26,7 +26,7 @@ fn main() {
     let height = 900;
 
     // Ventana
-    let mut window = Window::new("Minecraft Diorama RT", width as usize, height as usize);
+    let mut window = Window::new("Minecraft Diorama", width as usize, height as usize);
 
     // Framebuffer
     let mut fb = Framebuffer::new(width as u32, height as u32);
@@ -34,91 +34,66 @@ fn main() {
     // Cámara orbital (centro entre capas para ver ambos niveles)
     let mut camera = OrbitCamera::new(glm::vec3(0.0, 2.0, 0.0), 10.0, 1.0, 0.35);
 
-    // ---------------------------
-    //  Texturas (assets/*.png)
-    // ---------------------------
-    let grass_top   = Texture::load("assets/grass_top.png");
-    let grass_side  = Texture::load("assets/grass_side.png").rotated_180();
-    let dirt_tex    = Texture::load("assets/dirt.png");
-    let stone_tex   = Texture::load("assets/stone.png");
-    let iron_tex    = Texture::load("assets/iron.png");
-    let diamond_tex = Texture::load("assets/diamond.png");
-    let lava_tex    = Texture::load("assets/lava.png");
-    let water_tex   = Texture::load("assets/water.png");
-    let wood_tex   = Texture::load("assets/wood.png");
-    let leaves_tex = Texture::load("assets/leaves.png");
+    // Cargar texturas
+    let grass_top= Texture::load("assets/grass_top.png");
+    let grass_side= Texture::load("assets/grass_side.png").rotated_180();
+    let dirt_tex= Texture::load("assets/dirt.png");
+    let stone_tex= Texture::load("assets/stone.png");
+    let iron_tex= Texture::load("assets/iron.png");
+    let diamond_tex= Texture::load("assets/diamond.png");
+    let lava_tex= Texture::load("assets/lava.png");
+    let water_tex= Texture::load("assets/water.png");
+    let wood_tex= Texture::load("assets/wood.png");
+    let leaves_tex= Texture::load("assets/leaves.png");
 
-    let sky_px = Texture::load("assets/sky_px.png");
-    let sky_nx = Texture::load("assets/sky_nx.png");
-    let sky_py = Texture::load("assets/sky_py.png");
-    let sky_ny = Texture::load("assets/sky_ny.png");
-    let sky_pz = Texture::load("assets/sky_pz.png");
-    let sky_nz = Texture::load("assets/sky_nz.png");
+    let sky_px= Texture::load("assets/sky_px.png");
+    let sky_nx= Texture::load("assets/sky_nx.png");
+    let sky_py= Texture::load("assets/sky_py.png");
+    let sky_ny= Texture::load("assets/sky_ny.png");
+    let sky_pz= Texture::load("assets/sky_pz.png");
+    let sky_nz= Texture::load("assets/sky_nz.png");
 
     let skybox = Skybox::new(sky_px, sky_nx, sky_py, sky_ny, sky_pz, sky_nz);
 
-    // ------------------------------------------------------
-    //  Materiales con texturas y parámetros independientes
-    // ------------------------------------------------------
-    // Grass: 6 caras (side/side/bottom/top/side/side)
+    // Materiales con texturas y parámetros independientes
+    // Grass tiene side, bottom y top diferentes
     let grass_mat = Material::with_cube_textures(
-        grass_side.clone(), grass_side.clone(), // nx, px
-        dirt_tex.clone(),   grass_top.clone(),  // ny (bottom), py (top)
-        grass_side.clone(), grass_side.clone(), // nz, pz
-        0.10, 12.0, 0.02, 0.0, 1.0              // specular, shininess, reflectivity, transparency, ior
+        grass_side.clone(), grass_side.clone(),
+        dirt_tex.clone(),   grass_top.clone(),
+        grass_side.clone(), grass_side.clone(),
+        0.06, 12.0, 0.02, 0.0, 1.0
     );
 
     // Dirt
-    let dirt_mat = Material::with_texture(
-        dirt_tex.clone(),
-        0.02, 6.0, 0.00, 0.0, 1.0
-    );
+    let dirt_mat = Material::with_texture(dirt_tex.clone(), 0.02, 7.0, 0.00, 0.0, 1.0);
 
     // Stone
-    let stone_mat = Material::with_texture(
-        stone_tex.clone(),
-        0.03, 8.0, 0.00, 0.0, 1.0
-    );
+    let stone_mat = Material::with_texture(stone_tex.clone(), 0.04, 12.0, 0.02, 0.0, 1.0);
 
     // Iron ore
-    let iron_mat = Material::with_texture(
-        iron_tex.clone(),
-        0.15, 24.0, 0.05, 0.0, 1.0
-    );
+    let iron_mat = Material::with_texture(iron_tex.clone(), 0.12, 28.0, 0.04, 0.0, 1.0);
 
-    // Diamond ore
-    let diamond_mat = Material::with_texture(
-        diamond_tex.clone(),
-        0.20, 32.0, 0.08, 0.0, 1.0
-    );
+    // Diamond (opaco brillante)
+    let diamond_mat = Material::with_texture(diamond_tex.clone(), 0.28, 80.0, 0.14, 0.0, 1.0);
 
-    // Lava (opaca por ahora; más adelante podemos darle emisión/transparencia)
-    let lava_mat = Material::with_texture(
-        lava_tex.clone(),
-        0.25, 32.0, 0.02, 0.0, 1.0
-    );
+    // Lava (sin emisión aún)
+    let lava_mat = Material::with_texture(lava_tex.clone(), 0.10, 10.0, 0.01, 0.0, 1.0);
 
-    // Agua
+    // Water (físico)
     let water_mat = Material::with_texture(
         water_tex.clone(),
-        0.18,   // specular
-        64.0,   // shininess
+        0.18,   
+        64.0,   
         0.9,
-        0.66,   // transparency (↑ para que se vea la refracción)
-        1.33    // ior del agua
+        0.4,   
+        1.33    
     );
 
-    // Madera (opaca, poco especular)
-    let wood_mat = Material::with_texture(
-        wood_tex.clone(),
-        0.05, 16.0, 0.02, 0.0, 1.0
-    );
+    // Wood
+    let wood_mat = Material::with_texture(wood_tex.clone(), 0.05, 16.0, 0.02, 0.0, 1.0);
 
-    // Hojas (ligeramente transparentes; IOR ~1.33)
-    let leaves_mat = Material::with_texture(
-        leaves_tex.clone(),
-        0.10, 12.0, 0.00, 0.30, 1.33
-    );
+    // Leaves
+    let leaves_mat = Material::with_texture(leaves_tex.clone(), 0.07, 12.0, 0.01, 0.38, 1.40);
         
 
     // Registry base (Grass/Dirt/Stone). Iron/Diamond/Lava los pondremos por posición post-bake.
@@ -129,10 +104,11 @@ fn main() {
     registry.set(BlockKind::Water, water_mat.clone());
     registry.set(BlockKind::Wood,   wood_mat.clone());
     registry.set(BlockKind::Leaves, leaves_mat.clone());
+    registry.set(BlockKind::Lava, lava_mat.clone());
+    registry.set(BlockKind::Diamond, diamond_mat.clone());
+    registry.set(BlockKind::Iron, iron_mat.clone());
 
-    // ---------------------------
-    //  Construcción del diorama
-    // ---------------------------
+    // Construccion de diorama
     let mut world = World::new();
 
     // Piso superior 5x5, con grass y water
@@ -205,7 +181,7 @@ fn main() {
     // Piso inferior
     // Donde S=Stone, L=Lava, D=Diamond.
     #[derive(Clone, Copy)]
-    enum Cell { S, L, D }
+    enum Cell { S, L }
 
     let pattern: [[Cell; 5]; 5] = [
         [Cell::S, Cell::S, Cell::S, Cell::S, Cell::S],
@@ -285,13 +261,12 @@ fn main() {
 
         // Piso inferior según la matriz
         if y == -5 && !((x == -2 || x == 2) && (z == -2 || z == 2)) {
-            let ix = (x + 2) as usize; // -2..2 → 0..4
+            let ix = (x + 2) as usize;
             let iz = (z + 2) as usize;
 
             match pattern[iz][ix] {
-                Cell::S => { /* ya lo tiene registry */ }
+                Cell::S => { a.material = stone_mat.clone(); }
                 Cell::L => { a.material = lava_mat.clone(); }
-                Cell::D => { a.material = diamond_mat.clone(); }
             }
         }
     }
@@ -300,7 +275,6 @@ fn main() {
     let corners = [(-2, -2), (2, -2), (-2, 2), (2, 2)];
 
     for (x, z) in corners {
-        // ¿Existe ya un bloque en esa esquina a y=-5?
         let min = glm::vec3(x as f32, -5.0, z as f32);
         let exists = aabbs.iter().any(|a| {
             (a.min.x - min.x).abs() < 1e-6 &&
@@ -309,13 +283,11 @@ fn main() {
         });
         if exists { continue; }
 
-        // Decide el material a partir de la matriz 5x5 (Cell::S/L/D)
-        let ix = (x + 2) as usize; // -2..2 → 0..4
+        let ix = (x + 2) as usize;
         let iz = (z + 2) as usize;
         let mat = match pattern[iz][ix] {
             Cell::S => stone_mat.clone(),
             Cell::L => lava_mat.clone(),
-            Cell::D => diamond_mat.clone(),
         };
 
         aabbs.push(Aabb::new(min, min + glm::vec3(1.0, 1.0, 1.0), mat));
@@ -329,7 +301,7 @@ fn main() {
         spheres: vec![],
         aabbs,
         lights: vec![light0],
-        skybox: Some(skybox), // ← aquí
+        skybox: Some(skybox), 
     };
 
     let renderer = Renderer::new();
@@ -347,7 +319,6 @@ fn main() {
         // Input cámara
         let (dx, dy) = window.mouse_delta();
         if window.is_mouse_down(MouseButton::MOUSE_BUTTON_RIGHT) || window.is_mouse_down(MouseButton::MOUSE_BUTTON_LEFT) {
-            // antes: camera.rotate(dx * rot_sens, -dy * rot_sens);
             camera.rotate(INVERT_YAW * dx * rot_sens, INVERT_PITCH * dy * rot_sens);
         }
 

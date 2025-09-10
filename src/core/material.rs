@@ -20,17 +20,17 @@ pub struct Material {
     pub shininess: f32,
     pub reflectivity: f32,
     pub transparency: f32,
-    pub ior: f32,
-    pub albedo_tex: AlbedoTex,
+    pub ior: f32, //indice de refraccion
+    pub albedo_tex: AlbedoTex, //rexturas
 }
 
 impl Material {
-    pub fn with_solid(albedo: Color, specular: f32, shininess: f32, reflectivity: f32, transparency: f32, ior: f32) -> Self {
-        Self { albedo, specular, shininess, reflectivity, transparency, ior, albedo_tex: AlbedoTex::None }
-    }
+    // una sola textura
     pub fn with_texture(tex: Texture, specular: f32, shininess: f32, reflectivity: f32, transparency: f32, ior: f32) -> Self {
         Self { albedo: Color::new(255,255,255), specular, shininess, reflectivity, transparency, ior, albedo_tex: AlbedoTex::Single(tex) }
     }
+
+    // mas de una textura para cubo
     pub fn with_cube_textures(nx: Texture, px: Texture, ny: Texture, py: Texture, nz: Texture, pz: Texture,
         specular: f32, shininess: f32, reflectivity: f32, transparency: f32, ior: f32) -> Self {
         Self {
@@ -40,6 +40,7 @@ impl Material {
         }
     }
 
+    // miss
     pub fn default_black() -> Self {
         Self { albedo: Color::new(0,0,0), specular: 0.0, shininess: 1.0, reflectivity: 0.0, transparency: 0.0, ior: 1.0, albedo_tex: AlbedoTex::None }
     }

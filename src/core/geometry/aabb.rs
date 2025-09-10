@@ -4,8 +4,8 @@ use super::RayIntersect;
 
 #[derive(Clone)]
 pub struct Aabb {
-    pub min: glm::Vec3,
-    pub max: glm::Vec3,
+    pub min: glm::Vec3, //esquina minima
+    pub max: glm::Vec3, //esquina maxima
     pub material: Material,
 }
 

@@ -20,5 +20,4 @@ impl Framebuffer {
         }
     }
     pub fn pixels(&self) -> &[u32] { &self.pixels }
-    pub fn pixels_mut(&mut self) -> &mut [u32] { &mut self.pixels }
 }
