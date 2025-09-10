@@ -89,8 +89,8 @@ impl Renderer {
                 closest = hit;
             }
         }
-        // AABBs (versión estándar)
-        for b in &scene.aabbs {
+        // Cubes (versión estándar)
+        for b in &scene.cubes {
             let hit = b.ray_intersect(&ray.origin, &ray.dir);
             if hit.is_intersecting && hit.distance < zbuffer {
                 zbuffer = hit.distance;
@@ -276,8 +276,8 @@ fn shadow_visibility(scene: &Scene, p: glm::Vec3, n: glm::Vec3, light_pos: glm::
             }
         }
     }
-    // AABBs
-    for b in &scene.aabbs {
+    // Cubess
+    for b in &scene.cubes {
         let h = b.ray_intersect(&origin, &ldir);
         if h.is_intersecting && h.distance < tmax {
             let t = h.material.transparency.clamp(0.0, 1.0);

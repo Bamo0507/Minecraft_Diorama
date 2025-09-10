@@ -1,5 +1,5 @@
 pub mod sphere;
-pub mod aabb;
+pub mod cube;
 
 use nalgebra_glm as glm;
 use crate::core::intersect::Intersect;

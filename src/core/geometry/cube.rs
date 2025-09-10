@@ -3,19 +3,19 @@ use crate::core::{intersect::{Intersect, Face}, material::Material};
 use super::RayIntersect;
 
 #[derive(Clone)]
-pub struct Aabb {
+pub struct Cube {
     pub min: glm::Vec3, //esquina minima
     pub max: glm::Vec3, //esquina maxima
     pub material: Material,
 }
 
-impl Aabb {
+impl Cube {
     pub fn new(min: glm::Vec3, max: glm::Vec3, material: Material) -> Self {
         Self { min, max, material }
     }
 }
 
-impl RayIntersect for Aabb {
+impl RayIntersect for Cube {
     fn ray_intersect(&self, ro: &glm::Vec3, rd: &glm::Vec3) -> Intersect {
         let inv = glm::vec3(1.0 / rd.x, 1.0 / rd.y, 1.0 / rd.z);
 

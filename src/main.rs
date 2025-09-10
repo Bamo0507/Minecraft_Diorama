@@ -5,7 +5,7 @@ use nalgebra_glm as glm;
 use app::window::Window;
 use core::color::Color;
 use core::framebuffer::Framebuffer;
-use core::geometry::aabb::Aabb;
+use core::geometry::cube::Cube;
 use core::renderer::Renderer;
 use core::scene::Scene;
 use core::camera::OrbitCamera;
@@ -74,10 +74,10 @@ fn main() {
     let iron_mat = Material::with_texture(iron_tex.clone(), 0.12, 28.0, 0.04, 0.0, 1.0);
 
     // Diamond (opaco brillante)
-    let diamond_mat = Material::with_texture(diamond_tex.clone(), 0.28, 80.0, 0.14, 0.0, 1.0);
+    let diamond_mat = Material::with_texture(diamond_tex.clone(), 0.28, 90.0, 0.14, 0.0, 1.0);
 
     // Lava (sin emisión aún)
-    let lava_mat = Material::with_texture(lava_tex.clone(), 0.10, 10.0, 0.01, 0.0, 1.0);
+    let lava_mat = Material::with_texture(lava_tex.clone(), 0.10, 100.0, 0.01, 0.0, 1.0);
 
     // Water (físico)
     let water_mat = Material::with_texture(
@@ -203,11 +203,11 @@ fn main() {
         }
     }
 
-    // Horneo a AABBs
-    let mut aabbs = world.bake(&registry);
+    // Horneo a Cubes
+    let mut cubes = world.bake(&registry);
 
     // Sustituciones por posición
-    for a in &mut aabbs {
+    for a in &mut cubes {
         let x = a.min.x.round() as i32;
         let y = a.min.y.round() as i32;
         let z = a.min.z.round() as i32;
@@ -276,7 +276,7 @@ fn main() {
 
     for (x, z) in corners {
         let min = glm::vec3(x as f32, -5.0, z as f32);
-        let exists = aabbs.iter().any(|a| {
+        let exists = cubes.iter().any(|a| {
             (a.min.x - min.x).abs() < 1e-6 &&
             (a.min.y - min.y).abs() < 1e-6 &&
             (a.min.z - min.z).abs() < 1e-6
@@ -290,7 +290,7 @@ fn main() {
             Cell::L => lava_mat.clone(),
         };
 
-        aabbs.push(Aabb::new(min, min + glm::vec3(1.0, 1.0, 1.0), mat));
+        cubes.push(Cube::new(min, min + glm::vec3(1.0, 1.0, 1.0), mat));
     }
 
     // Luz
@@ -299,7 +299,7 @@ fn main() {
     // Escena final
     let scene = Scene {
         spheres: vec![],
-        aabbs,
+        cubes,
         lights: vec![light0],
         skybox: Some(skybox), 
     };
